@@ -1,6 +1,6 @@
 import createHttpError from "http-errors";
 import { Request, Response, NextFunction } from "express";
-import generatorJWT from "./generatorJWT";
+import generatorJWT from "../tools/generatorJWT";
 import userModel from "../schemas/user";
 
 const providerJWT = async (req: Request, res: Response, next: NextFunction) => {

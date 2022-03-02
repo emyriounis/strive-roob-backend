@@ -20,6 +20,9 @@ const errorHandler = async (
     case 404:
       res.status(404).send(error.message || "Not Found");
       break;
+    case 409:
+      res.status(409).send(error.message || "Conflict");
+      break;
     default:
       console.log(error);
       res.status(500).send("Unknown server error");

@@ -9,6 +9,8 @@ const refreshMiddleware = async (
   next: NextFunction
 ) => {
   const refreshToken = req.cookies.refreshToken as string;
+  console.log(refreshToken);
+
   if (refreshToken) {
     const user = await userModel.findOne({ refreshToken });
 

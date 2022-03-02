@@ -21,8 +21,19 @@ const registerMiddleware = async (
     } else {
       next(createHttpError(400, "failed to create user"));
     }
-  } catch (error) {
-    next(error);
+  } catch (error: any) {
+    if (error.code === 11000) {
+      next(
+        createHttpError(
+          409,
+          `User already exists, try a different ${Object.keys(
+            error.keyPattern
+          ).join("/")}`
+        )
+      );
+    } else {
+      next(error);
+    }
   }
 };
 
