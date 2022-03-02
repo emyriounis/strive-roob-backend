@@ -1,6 +1,7 @@
 import "dotenv/config";
 import cookieParser from "cookie-parser";
 import express from "express";
+import cors from "cors";
 import listEndpoints from "express-list-endpoints";
 import mongoose from "mongoose";
 
@@ -9,8 +10,14 @@ import userRouter from "./routes/user";
 import errorHandler from "./errorHandler";
 
 const server = express();
-server.use(express.json());
+server.use(
+  cors({
+    origin: process.env.FE_URL,
+    credentials: true,
+  })
+);
 server.use(cookieParser());
+server.use(express.json());
 const port = process.env.PORT || 8080;
 
 server.use("/", serverRouter);
