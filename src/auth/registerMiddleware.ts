@@ -9,8 +9,8 @@ const registerMiddleware = async (
   next: NextFunction
 ) => {
   try {
-    const { email, password } = req.body;
-    const newUser = new UserModel({ email, password });
+    const { firstName, lastName, email, password } = req.body;
+    const newUser = new UserModel({ firstName, lastName, email, password });
     const createdUser = await newUser.save();
 
     if (createdUser) {

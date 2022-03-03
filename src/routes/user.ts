@@ -13,14 +13,27 @@ const userRouter = Router();
 userRouter.post("/register", registerMiddleware, providerJWT, sendCookies);
 userRouter.post("/login", loginMiddleware, providerJWT, sendCookies);
 userRouter.post("/refresh", refreshMiddleware, providerJWT, sendCookies);
+userRouter.post(
+  "/logout",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res
+        .clearCookie("accessToken")
+        .clearCookie("refreshToken", {
+          path: "/users/refresh",
+        })
+        .send({ logout: true });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 userRouter.get(
   "/me",
   authValidator,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      console.log("test", req.userID);
-
       const user = await UserModel.findById(req.userID);
 
       if (user) {
