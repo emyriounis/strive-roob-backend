@@ -9,6 +9,7 @@
     "start": "node build/src/server"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.53.0",
     "@types/cookie-parser": "^1.4.2",
     "@types/cors": "^2.8.12",
     "@types/http-errors": "^1.8.2",

@@ -9,6 +9,7 @@ const loginMiddleware = async (
 ) => {
   if (req.body.identifier && req.body.password) {
     const { identifier, password } = req.body;
+
     const user = await userModel.authenticate(identifier, password);
 
     if (user) {

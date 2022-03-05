@@ -1,4 +1,7 @@
 import { NextFunction, Request, Response, Router } from "express";
+import createHttpError from "http-errors";
+// import { GetItemCommand } from "@aws-sdk/client-dynamodb";
+// import { ddbClient } from "../db/db";
 import providerJWT from "../auth/providerJWT";
 import loginMiddleware from "../auth/loginMiddleware";
 import refreshMiddleware from "../auth/refreshMiddleware";
@@ -6,7 +9,25 @@ import registerMiddleware from "../auth/registerMiddleware";
 import sendCookies from "../auth/sendCookies";
 import authValidator from "../auth/authValidator";
 import UserModel from "../schemas/user";
-import createHttpError from "http-errors";
+
+// export const run = async () => {
+//   try {
+//     const data = await ddbClient.send(
+//       new GetItemCommand({
+//         TableName: "Users",
+//         Key: {
+//           email: { S: "el.myrioun@gmail.com" },
+//         },
+//         // ProjectionExpression: "firstName",
+//       })
+//     );
+//     console.log("Success", data);
+//     return data;
+//   } catch (error) {
+//     console.log(error);
+//   }
+// };
+// run();
 
 const userRouter = Router();
 
