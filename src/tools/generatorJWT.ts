@@ -1,12 +1,12 @@
 import jwt from "jsonwebtoken";
 
 const generatorJWT = (
-  _id: string,
+  email: string,
   expiresIn: string
 ): Promise<string | undefined> =>
   new Promise((resolve, reject) =>
     jwt.sign(
-      { _id },
+      { email },
       process.env.JWT_SECRET as string,
       { expiresIn },
       (err: Error | null, token: string | undefined) => {

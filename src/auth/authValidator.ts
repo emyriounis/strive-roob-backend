@@ -12,8 +12,8 @@ const authValidator = async (
       const payload: any = await validatorJWT(
         req.cookies.accessToken as string
       );
-      if (payload._id) {
-        req.userID = payload._id;
+      if (payload.email) {
+        req.userEmail = payload.email;
         next();
       } else {
         next(createHttpError(401, "Token not valid"));

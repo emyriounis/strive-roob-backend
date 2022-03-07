@@ -2,18 +2,33 @@ import createHttpError from "http-errors";
 import { Request, Response, NextFunction } from "express";
 import generatorJWT from "../tools/generatorJWT";
 import userModel from "../schemas/user";
+import ddbClient from "../db/ddbClient";
+import { UpdateItemCommand } from "@aws-sdk/client-dynamodb";
+import * as globalTypes from "../types/global";
 
 const providerJWT = async (req: Request, res: Response, next: NextFunction) => {
-  const _id = req.userID;
-
   try {
-    if (_id) {
-      const accessToken = await generatorJWT(_id, "15m");
-      const refreshToken = await generatorJWT(_id, "2w");
+    const email = req.userEmail;
+    if (email) {
+      const accessToken = await generatorJWT(email, "15m");
+      const refreshToken = await generatorJWT(email, "2w");
 
       if (accessToken && refreshToken) {
-        const user = await userModel.findByIdAndUpdate(_id, { refreshToken });
-        if (user) {
+        const user = await ddbClient.send(
+          new UpdateItemCommand({
+            TableName: "Users",
+            Key: {
+              email: { S: email },
+            },
+            UpdateExpression: "set refreshToken = :rt",
+            ExpressionAttributeValues: {
+              ":rt": { S: refreshToken },
+            },
+            ReturnValues: "ALL_NEW",
+          })
+        );
+
+        if (user.Attributes) {
           req.tokens = { accessToken, refreshToken };
           next();
         } else {

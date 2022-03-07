@@ -12,7 +12,7 @@ import errorHandler from "./errorHandler";
 const server = express();
 server.use(
   cors({
-    origin: "http://192.168.1.5:3000",
+    origin: "http://localhost:3000",
     credentials: true,
   })
 );

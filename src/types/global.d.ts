@@ -9,6 +9,7 @@ declare global {
         accessToken: string;
         refreshToken: string;
       };
+      userEmail?: string;
       userID?: string;
     }
   }

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import createHttpError from "http-errors";
-import { PutItemCommand } from "@aws-sdk/client-dynamodb";
+import { GetItemCommand, PutItemCommand } from "@aws-sdk/client-dynamodb";
 import UserModel from "../schemas/user";
 import * as globalTypes from "../types/global";
 import ddbClient from "../db/ddbClient";
@@ -13,45 +13,47 @@ const registerMiddleware = async (
 ) => {
   try {
     const { firstName, lastName, email, password } = req.body;
-    const newUser = {
-      email: { S: email },
-      password: { S: await encryptPassword(password) },
-      firstName: { S: firstName },
-      lastName: { S: lastName },
-    };
-    // const newUser = new UserModel({ firstName, lastName, email, password });
-    // const createdUser = await newUser.save();
-    const data = await ddbClient.send(
-      new PutItemCommand({
+
+    const userExists = await ddbClient.send(
+      new GetItemCommand({
         TableName: "Users",
-        Item: newUser,
-        ReturnValues: "ALL_OLD",
+        Key: {
+          email: { S: email },
+        },
+        AttributesToGet: ["email"],
       })
     );
-    console.log(data);
+    if (userExists.Item) {
+      next(createHttpError(400, "User already exists"));
+    } else {
+      const newUser = {
+        email: { S: email },
+        password: { S: await encryptPassword(password) },
+        firstName: { S: firstName },
+        lastName: { S: lastName },
+      };
 
-    // if (createdUser) {
-    //   const { _id } = createdUser.toJSON();
-    //   req.userID = _id as string;
+      await ddbClient.send(
+        new PutItemCommand({
+          TableName: "Users",
+          Item: newUser,
+          ConditionExpression: "#email <>  :email",
+          ExpressionAttributeNames: {
+            "#email": "email",
+          },
+          ExpressionAttributeValues: {
+            ":email": { S: email },
+          },
+          ReturnValues: "ALL_OLD",
+        })
+      );
 
-    //   next();
-    // } else {
-    //   next(createHttpError(400, "failed to create user"));
-    // }
+      req.userEmail = email;
+    }
+
     next();
-  } catch (error: any) {
-    // if (error.code === 11000) {
-    //   next(
-    //     createHttpError(
-    //       409,
-    //       `User already exists, try a different ${Object.keys(
-    //         error.keyPattern
-    //       ).join("/")}`
-    //     )
-    //   );
-    // } else {
+  } catch (error) {
     next(error);
-    // }
   }
 };
 

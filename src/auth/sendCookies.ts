@@ -16,7 +16,7 @@ const sendCookies = async (req: Request, res: Response, next: NextFunction) => {
         // secure: true, // only https requests
         maxAge: 14 * 24 * 60 * 60 * 1000,
       })
-      .send({ login: true, userID: req.userID });
+      .send({ login: true, email: req.userEmail });
   } catch (error) {
     next(error);
   }
