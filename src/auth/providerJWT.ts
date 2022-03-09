@@ -1,7 +1,6 @@
 import createHttpError from "http-errors";
 import { Request, Response, NextFunction } from "express";
 import generatorJWT from "../tools/generatorJWT";
-import userModel from "../schemas/user";
 import ddbClient from "../db/ddbClient";
 import { UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import * as globalTypes from "../types/global";

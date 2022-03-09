@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
 import validatorJWT from "../tools/validatorJWT";
+import * as globalTypes from "../types/global.d";
 
 const authValidator = async (
   req: Request,

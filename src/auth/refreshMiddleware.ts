@@ -2,7 +2,6 @@ import { GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { Request, Response, NextFunction } from "express";
 import createHttpError from "http-errors";
 import ddbClient from "../db/ddbClient";
-import userModel from "../schemas/user";
 import validatorJWT from "../tools/validatorJWT";
 import * as globalTypes from "../types/global";
 

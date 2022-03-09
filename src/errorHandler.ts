@@ -1,4 +1,4 @@
-import express, { NextFunction, Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { ErrorType } from "./types/error";
 
 const errorHandler = async (
@@ -25,7 +25,7 @@ const errorHandler = async (
       break;
     default:
       console.log(error);
-      res.status(500).send("Unknown server error");
+      res.status(500).send(error.name || "Unknown server error");
   }
 };
 
