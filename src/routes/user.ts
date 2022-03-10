@@ -1,6 +1,14 @@
 import { NextFunction, Request, Response, Router } from "express";
 import createHttpError from "http-errors";
 import multer from "multer";
+import {
+  DeleteItemCommand,
+  GetItemCommand,
+  UpdateItemCommand,
+} from "@aws-sdk/client-dynamodb";
+import AWS from "aws-sdk";
+import multerS3 from "multer-s3";
+
 import providerJWT from "../auth/providerJWT";
 import loginMiddleware from "../auth/loginMiddleware";
 import refreshMiddleware from "../auth/refreshMiddleware";
@@ -9,17 +17,7 @@ import sendCookies from "../auth/sendCookies";
 import authValidator from "../auth/authValidator";
 import * as globalTypes from "../types/global";
 import ddbClient from "../db/ddbClient";
-import {
-  DeleteItemCommand,
-  GetItemCommand,
-  UpdateItemCommand,
-} from "@aws-sdk/client-dynamodb";
-import AWS from "aws-sdk";
-import multerS3 from "multer-s3";
 import fileUploaded from "../auth/fileUploaded";
-import { street1 } from "aws-sdk/clients/importexport";
-import sesClient from "../db/sesClient";
-import { SendEmailCommand } from "@aws-sdk/client-ses";
 import generatorJWT from "../tools/generatorJWT";
 import validatorJWT from "../tools/validatorJWT";
 import encryptPassword from "../tools/encryptPassword";
@@ -100,6 +98,29 @@ userRouter.post(
       } else {
         next(error);
       }
+    }
+  }
+);
+
+userRouter.post(
+  "/sendVerificationEmail",
+  authValidator,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (req.userEmail) {
+        const token = await generatorJWT(req.userEmail, "1w");
+        await sendEmail(
+          [req.userEmail],
+          [],
+          "",
+          `You can validate your email here: ${process.env.FE_URL}/validateEmail/${token}\n\nIt is valid for 1 week`,
+          "Roob. Validate your email"
+        );
+      } else {
+        next(createHttpError(400, "Email not provided"));
+      }
+    } catch (error) {
+      next(error);
     }
   }
 );
@@ -229,7 +250,13 @@ userRouter.get(
             Key: {
               email: { S: req.userEmail },
             },
-            AttributesToGet: ["email", "firstName", "lastName", "avatar"],
+            AttributesToGet: [
+              "email",
+              "firstName",
+              "lastName",
+              "avatar",
+              "emailVerified",
+            ],
           })
         );
 
@@ -239,6 +266,7 @@ userRouter.get(
             firstName: user.Item.firstName?.S,
             lastName: user.Item.lastName?.S,
             avatar: user.Item.avatar?.S,
+            emailVerified: user.Item.emailVerified?.BOOL || false,
           });
         } else {
           next(createHttpError(404, "User not found"));
@@ -310,7 +338,13 @@ userRouter.delete(
 
         console.log(user);
         if (user) {
-          res.status(204).send();
+          res
+            .status(204)
+            .clearCookie("accessToken")
+            .clearCookie("refreshToken", {
+              path: "/users/refresh",
+            })
+            .send();
         } else {
           next(createHttpError(404, "User not found"));
         }
