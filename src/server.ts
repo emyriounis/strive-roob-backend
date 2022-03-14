@@ -7,6 +7,7 @@ import listEndpoints from "express-list-endpoints";
 import serverRouter from "./routes/server";
 import userRouter from "./routes/user";
 import errorHandler from "./errorHandler";
+import productRoute from "./routes/product";
 
 const server = express();
 server.use(
@@ -21,6 +22,7 @@ const port = process.env.PORT || 8080;
 
 server.use("/", serverRouter);
 server.use("/users", userRouter);
+server.use("/products", productRoute);
 server.use(errorHandler);
 
 server.listen(port, () => {
