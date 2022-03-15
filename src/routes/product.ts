@@ -1,5 +1,4 @@
 import {
-  DeleteItemCommand,
   GetItemCommand,
   PutItemCommand,
   ScanCommand,
@@ -83,6 +82,7 @@ productRoute.post(
             next(createHttpError(404, "Faild to retrive created product"));
           }
         } else {
+          next(createHttpError(400, "Product info not valid"));
         }
       } else {
         next(createHttpError(400, "Email not provided"));
@@ -111,8 +111,6 @@ productRoute.get(
           })
         );
         if (products) {
-          console.log(products.Items);
-
           res.send(
             products.Items?.map((product) => {
               return {
@@ -149,12 +147,12 @@ productRoute.get(
             ExpressionAttributeValues: {
               ":userEmail": { S: req.userEmail },
             },
-            ProjectionExpression: "productName, price, currency, recurring",
+            ProjectionExpression:
+              "productName, price, currency, recurring, archived",
             TableName: "Products",
           })
         );
         if (products.Items) {
-          console.log(products);
           const json2csvParser = new Json2csvParser({
             fields: [
               "productName",
@@ -171,13 +169,13 @@ productRoute.get(
                 recurring: product.recurring.S,
                 currency: product.currency.S,
                 price: product.price.N,
-                archived: product.archived?.BOOL || false,
+                archived: product.archived?.BOOL || false ? "yes" : "no",
               };
             })
           );
           res.setHeader(
             "Content-Disposition",
-            "attachment; filename = experiences.csv"
+            "attachment; filename = products.csv"
           );
           res.set("Content-Type", "text/csv");
           res.status(200).end(csvData);
@@ -246,7 +244,6 @@ productRoute.put(
     try {
       if (req.userEmail) {
         const { product, archive } = req.body;
-        console.log(product, archive);
 
         const archivedProduct = await ddbClient.send(
           new UpdateItemCommand({
@@ -262,7 +259,6 @@ productRoute.put(
             ReturnValues: "ALL_NEW",
           })
         );
-        console.log(archivedProduct);
 
         if (archivedProduct.Attributes) {
           res.send({
