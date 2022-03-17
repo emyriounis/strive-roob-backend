@@ -9,6 +9,7 @@ import userRouter from "./routes/user";
 import errorHandler from "./errorHandler";
 import productRoute from "./routes/product";
 import customerRouter from "./routes/customers";
+import invoiceRouter from "./routes/invoices";
 
 const server = express();
 server.use(
@@ -25,6 +26,7 @@ server.use("/", serverRouter);
 server.use("/users", userRouter);
 server.use("/products", productRoute);
 server.use("/customers", customerRouter);
+server.use("/invoices", invoiceRouter);
 server.use(errorHandler);
 
 server.listen(port, () => {

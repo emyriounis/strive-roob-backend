@@ -94,8 +94,6 @@ customerRouter.get(
           })
         );
         if (customers) {
-          console.log(customers.Items);
-
           res.send(
             customers.Items?.map((customer) => {
               return {
