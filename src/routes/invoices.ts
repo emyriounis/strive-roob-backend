@@ -244,6 +244,66 @@ invoiceRouter.get(
 );
 
 invoiceRouter.get(
+  "/paid",
+  authValidator,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (req.userEmail) {
+        const invoices = await ddbClient.send(
+          new ScanCommand({
+            FilterExpression: "userEmail = :userEmail AND paid = :paid",
+            ExpressionAttributeValues: {
+              ":userEmail": { S: req.userEmail },
+              ":paid": { BOOL: true },
+            },
+            ProjectionExpression:
+              "amount, currency, createdAt, customerEmail, customerName, dueAt, products, notes, paid, paidAt",
+            TableName: "Invoices",
+          })
+        );
+        if (invoices.Items) {
+          res.send(
+            invoices.Items?.map((invoice) => {
+              return {
+                amount: invoice.amount.N,
+                currency: invoice.currency.S,
+                createdAt: invoice.createdAt.N,
+                customerEmail: invoice.customerEmail.S,
+                customerName: invoice.customerName.S,
+                dueAt: invoice.dueAt.N,
+                products: invoice.products.L?.map((item) => {
+                  return {
+                    product: item.M?.product.S,
+                    productName: item.M?.productName.S,
+                    currency: item.M?.currency.S,
+                    price: item.M?.price.N,
+                    quantity: item.M?.quantity.N,
+                  };
+                }),
+                notes: invoice.notes.S,
+                paid: invoice.paid.BOOL,
+                paidAt: invoice.paidAt.N,
+                status: invoice.paid.BOOL
+                  ? "Paid"
+                  : Number(invoice.dueAt.N) > Date.parse(Date())
+                  ? "Outstanding"
+                  : "Past Due",
+              };
+            })
+          );
+        } else {
+          next(createHttpError(404, "Failed to retrive invoices"));
+        }
+      } else {
+        next(createHttpError(400, "Email not provided"));
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+invoiceRouter.get(
   "/csv",
   authValidator,
   async (req: Request, res: Response, next: NextFunction) => {
