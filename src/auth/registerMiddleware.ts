@@ -1,11 +1,16 @@
 import { Request, Response, NextFunction } from "express";
 import createHttpError from "http-errors";
-import { GetItemCommand, PutItemCommand } from "@aws-sdk/client-dynamodb";
+import { PutItemCommand } from "@aws-sdk/client-dynamodb";
+import Stripe from "stripe";
 import * as globalTypes from "../types/global";
 import ddbClient from "../db/ddbClient";
 import encryptPassword from "../tools/encryptPassword";
 import sendEmail from "../tools/sendEmail";
 import generatorJWT from "../tools/generatorJWT";
+
+const stripe = new Stripe(process.env.STRIPE_TEST_KEY as string, {
+  apiVersion: "2020-08-27",
+});
 
 const registerMiddleware = async (
   req: Request,
@@ -15,12 +20,18 @@ const registerMiddleware = async (
   try {
     const { firstName, lastName, email, password } = req.body;
 
+    const stripeAccount = await stripe.accounts.create({
+      type: "standard",
+    });
+    console.log(stripeAccount);
+
     const newUser = {
       email: { S: email },
       password: { S: await encryptPassword(password) },
       firstName: { S: firstName },
       lastName: { S: lastName },
       emailVerified: { BOOL: false },
+      stripeId: { S: stripeAccount.id },
     };
 
     const createdUser = await ddbClient.send(

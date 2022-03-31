@@ -15,7 +15,7 @@ import subscriptionRouter from "./routes/subscriptions";
 const server = express();
 server.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: process.env.FE_URL,
     credentials: true,
   })
 );

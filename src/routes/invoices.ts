@@ -9,9 +9,14 @@ import createHttpError from "http-errors";
 import authValidator from "../auth/authValidator";
 import ddbClient from "../db/ddbClient";
 import json2csv from "json2csv";
+import Stripe from "stripe";
+import sendEmail from "../tools/sendEmail";
 
 const invoiceRouter = Router();
 const Json2csvParser = json2csv.Parser;
+const stripe = new Stripe(process.env.STRIPE_TEST_KEY as string, {
+  apiVersion: "2020-08-27",
+});
 
 invoiceRouter.post(
   "/",
@@ -25,6 +30,16 @@ invoiceRouter.post(
         } else if (products.lenght <= 0) {
           next(createHttpError(400, "No customer provided"));
         } else {
+          const user = await ddbClient.send(
+            new GetItemCommand({
+              TableName: "Users",
+              Key: {
+                email: { S: req.userEmail },
+              },
+              AttributesToGet: ["firstName", "lastName", "stripeId"],
+            })
+          );
+
           const customer = await ddbClient.send(
             new GetItemCommand({
               TableName: "Customers",
@@ -35,6 +50,7 @@ invoiceRouter.post(
               AttributesToGet: ["email", "customerName"],
             })
           );
+
           const dbProducts = await ddbClient.send(
             new ScanCommand({
               FilterExpression: `userEmail = :userEmail`,
@@ -47,11 +63,18 @@ invoiceRouter.post(
             })
           );
 
-          if (customer.Item && dbProducts.Items) {
+          if (user.Item && customer.Item && dbProducts.Items) {
             const currency: string | false | undefined =
-              dbProducts.Items?.length > 0 &&
-              new Set(dbProducts.Items.map((pr) => pr.currency.S)).size !== 1 &&
-              dbProducts.Items[0].currency.S;
+              products.length > 0 &&
+              new Set(
+                dbProducts.Items.filter((pr) =>
+                  products
+                    .map((prod: any) => prod.product === pr.product.S)
+                    .includes(true)
+                ).map((pr) => pr.currency.S)
+              ).size === 1 &&
+              products[0].currency;
+
             if (!currency) {
               next(
                 createHttpError(
@@ -70,9 +93,24 @@ invoiceRouter.post(
 
               const createdAt = Date.parse(Date().toString());
 
+              const paymentIntent = await stripe.paymentIntents.create(
+                {
+                  payment_method_types: ["card"],
+                  amount: 100 * amount,
+                  currency,
+                  application_fee_amount: amount, // 0.01 * 100 => 1
+                },
+                {
+                  stripeAccount: user.Item.stripeId?.S,
+                }
+              );
+
               const newInvoice = {
                 userEmail: { S: req.userEmail },
                 amount: { N: amount.toString() },
+                paymentIntentClientSecret: {
+                  S: paymentIntent.client_secret as string,
+                },
                 currency: { S: currency },
                 createdAt: { N: createdAt.toString() },
                 customerEmail: { S: customer.Item.email.S || "" },
@@ -132,6 +170,7 @@ invoiceRouter.post(
                     "createdAt",
                     "customerEmail",
                     "customerName",
+                    "paymentIntentClientSecret",
                     "dueAt",
                     "products",
                     "notes",
@@ -139,11 +178,15 @@ invoiceRouter.post(
                   ],
                 })
               );
-              console.log(createdInvoice);
 
               if (createdInvoice.Item) {
-                console.log(createdInvoice.Item);
-
+                await sendEmail(
+                  [createdInvoice.Item.customerEmail.S as string],
+                  [],
+                  "",
+                  `You can pay your invoice here: ${process.env.FE_URL}/payInvoice/${user.Item.stripeId?.S}/${createdInvoice.Item.paymentIntentClientSecret.S}`,
+                  `Roob. Your invoice from ${user.Item.firstName.S} ${user.Item.lastName.S}`
+                );
                 res.status(201).send({
                   amount: createdInvoice.Item.amount.N,
                   currency: createdInvoice.Item.currency.S,
@@ -424,47 +467,82 @@ invoiceRouter.get(
 //   }
 // );
 
-// invoiceRouter.put(
-//   "/archive",
-//   authValidator,
-//   async (req: Request, res: Response, next: NextFunction) => {
-//     try {
-//       if (req.userEmail) {
-//         const { customerEmail, archive } = req.body;
+invoiceRouter.put(
+  "/paid",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { stripeId, client_secret } = req.body;
 
-//         const archivedCustomer = await ddbClient.send(
-//           new UpdateItemCommand({
-//             TableName: "Customers",
-//             Key: {
-//               userEmail: { S: req.userEmail },
-//               customerEmail: { S: customerEmail as string },
-//             },
-//             UpdateExpression: "set archived = :archive",
-//             ExpressionAttributeValues: {
-//               ":archive": { BOOL: archive },
-//             },
-//             ReturnValues: "ALL_NEW",
-//           })
-//         );
+      const paymentIntent = await stripe.paymentIntents.retrieve(
+        client_secret,
+        { stripeAccount: stripeId }
+      );
+      console.log(paymentIntent.charges.data);
 
-//         if (archivedCustomer.Attributes) {
-//           res.send({
-//             customerEmail: archivedCustomer.Attributes.customerEmail.S,
-//             email: archivedCustomer.Attributes.email.S,
-//             customerName: archivedCustomer.Attributes.customerName.S,
-//             description: archivedCustomer.Attributes.description.S,
-//             archived: archivedCustomer.Attributes.archived?.BOOL || false,
-//           });
-//         } else {
-//           next(createHttpError(400, "Failed to update customer"));
-//         }
-//       } else {
-//         next(createHttpError(400));
-//       }
-//     } catch (error) {
-//       next(error);
-//     }
-//   }
-// );
+      const invoices = await ddbClient.send(
+        new ScanCommand({
+          FilterExpression:
+            "paymentIntentClientSecret = :paymentIntentClientSecret",
+          ExpressionAttributeValues: {
+            ":paymentIntentClientSecret": {
+              S: paymentIntent.client_secret as string,
+            },
+          },
+          ProjectionExpression:
+            "userEmail, createdAt,customerName, customerEmail, paymentIntentClientSecret, paid, paidAt",
+          TableName: "Invoices",
+        })
+      );
+
+      const invoice = invoices.Items?.find(
+        (inv) => inv.paymentIntentClientSecret?.S
+      );
+
+      if (
+        invoice?.paid?.BOOL === false &&
+        paymentIntent.status === "succeeded"
+      ) {
+        const paidInvoice = await ddbClient.send(
+          new UpdateItemCommand({
+            TableName: "Invoices",
+            Key: {
+              userEmail: { S: invoice?.userEmail?.S as string },
+              createdAt: { N: invoice?.createdAt?.N as string },
+            },
+            UpdateExpression: "set paid = :paid, paidAt = :paidAt",
+            ExpressionAttributeValues: {
+              ":paid": { BOOL: true },
+              ":paidAt": { N: Date.parse(Date()).toString() },
+            },
+            ReturnValues: "ALL_NEW",
+          })
+        );
+
+        if (paidInvoice.Attributes) {
+          res.send({
+            userEmail: paidInvoice.Attributes.userEmail.S,
+            customerEmail: paidInvoice.Attributes.customerEmail.S,
+            customerName: paidInvoice.Attributes.customerName.S,
+            paid: paidInvoice.Attributes.paid.BOOL,
+            paidAt: paidInvoice.Attributes.paidAt.N,
+          });
+        } else {
+          next(createHttpError(400, "Failed to update invoice"));
+        }
+      } else {
+        res.send({
+          userEmail: invoice?.userEmail?.S,
+          createdAt: invoice?.createdAt?.N,
+          customerEmail: invoice?.customerEmail?.S,
+          customerName: invoice?.customerName?.S,
+          paid: invoice?.paid?.BOOL,
+          paidAt: invoice?.paidAt?.N,
+        });
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 export default invoiceRouter;
