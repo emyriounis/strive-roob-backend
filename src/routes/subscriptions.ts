@@ -450,47 +450,4 @@ subscriptionRouter.put(
   }
 );
 
-// subscriptionRouter.put(
-//   "/archive",
-//   authValidator,
-//   async (req: Request, res: Response, next: NextFunction) => {
-//     try {
-//       if (req.userEmail) {
-//         const { customerEmail, archive } = req.body;
-
-//         const archivedCustomer = await ddbClient.send(
-//           new UpdateItemCommand({
-//             TableName: "Customers",
-//             Key: {
-//               userEmail: { S: req.userEmail },
-//               customerEmail: { S: customerEmail as string },
-//             },
-//             UpdateExpression: "set archived = :archive",
-//             ExpressionAttributeValues: {
-//               ":archive": { BOOL: archive },
-//             },
-//             ReturnValues: "ALL_NEW",
-//           })
-//         );
-
-//         if (archivedCustomer.Attributes) {
-//           res.send({
-//             customerEmail: archivedCustomer.Attributes.customerEmail.S,
-//             email: archivedCustomer.Attributes.email.S,
-//             customerName: archivedCustomer.Attributes.customerName.S,
-//             description: archivedCustomer.Attributes.description.S,
-//             archived: archivedCustomer.Attributes.archived?.BOOL || false,
-//           });
-//         } else {
-//           next(createHttpError(400, "Failed to update customer"));
-//         }
-//       } else {
-//         next(createHttpError(400));
-//       }
-//     } catch (error) {
-//       next(error);
-//     }
-//   }
-// );
-
 export default subscriptionRouter;

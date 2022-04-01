@@ -423,50 +423,6 @@ invoiceRouter.get(
   }
 );
 
-// invoiceRouter.put(
-//   "/",
-//   authValidator,
-//   async (req: Request, res: Response, next: NextFunction) => {
-//     try {
-//       if (req.userEmail) {
-//         const { customerEmail, email, customerName, description } = req.body;
-//         const updatedCustomer = await ddbClient.send(
-//           new UpdateItemCommand({
-//             TableName: "Customers",
-//             Key: {
-//               userEmail: { S: req.userEmail },
-//               customerEmail: { S: customerEmail },
-//             },
-//             UpdateExpression:
-//               "set email = :email, customerName = :customerName, description = :description",
-//             ExpressionAttributeValues: {
-//               ":email": { S: email },
-//               ":customerName": { S: customerName },
-//               ":description": { S: description },
-//             },
-//             ReturnValues: "ALL_NEW",
-//           })
-//         );
-//         if (updatedCustomer.Attributes) {
-//           res.send({
-//             customerEmail: updatedCustomer.Attributes.customerEmail.S,
-//             email: updatedCustomer.Attributes.email.S,
-//             customerName: updatedCustomer.Attributes.customerName.S,
-//             description: updatedCustomer.Attributes.description.S,
-//             archived: updatedCustomer.Attributes.archived?.BOOL || false,
-//           });
-//         } else {
-//           next(createHttpError(400, "Failed to update customer"));
-//         }
-//       } else {
-//         next(createHttpError(400));
-//       }
-//     } catch (error) {
-//       next(error);
-//     }
-//   }
-// );
-
 invoiceRouter.put(
   "/paid",
   async (req: Request, res: Response, next: NextFunction) => {
