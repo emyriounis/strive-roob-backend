@@ -3,6 +3,7 @@ import cookieParser from "cookie-parser";
 import express from "express";
 import cors from "cors";
 import listEndpoints from "express-list-endpoints";
+import cron from "node-cron";
 
 import serverRouter from "./routes/server";
 import userRouter from "./routes/user";
@@ -11,6 +12,7 @@ import productRoute from "./routes/product";
 import customerRouter from "./routes/customers";
 import invoiceRouter from "./routes/invoices";
 import subscriptionRouter from "./routes/subscriptions";
+import invoiceSubscriptions from "./scheduledTasks/invoiceSubscriptions";
 
 const server = express();
 server.use(
@@ -30,6 +32,10 @@ server.use("/customers", customerRouter);
 server.use("/invoices", invoiceRouter);
 server.use("/subscriptions", subscriptionRouter);
 server.use(errorHandler);
+
+cron.schedule("0 0 * * *", async () => {
+  await invoiceSubscriptions();
+});
 
 server.listen(port, () => {
   console.table(listEndpoints(server));

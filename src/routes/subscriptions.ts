@@ -9,7 +9,6 @@ import createHttpError from "http-errors";
 import authValidator from "../auth/authValidator";
 import ddbClient from "../db/ddbClient";
 import json2csv from "json2csv";
-import { ProductType } from "aws-sdk/clients/servicecatalog";
 
 const subscriptionRouter = Router();
 const Json2csvParser = json2csv.Parser;
