@@ -6,15 +6,17 @@ const sendCookies = async (req: Request, res: Response, next: NextFunction) => {
       .cookie("accessToken", req.tokens?.accessToken, {
         // domain: process.env.FE_URL,
         httpOnly: true,
-        // secure: true, // only https requests
+        secure: process.env.ENV === "production", // only https requests
         maxAge: 15 * 60 * 1000,
+        sameSite: "none",
       })
       .cookie("refreshToken", req.tokens?.refreshToken, {
         // domain: process.env.FE_URL,
         path: "/users/refresh",
         httpOnly: true,
-        // secure: true, // only https requests
+        secure: process.env.ENV === "production", // only https requests
         maxAge: 14 * 24 * 60 * 60 * 1000,
+        sameSite: "none",
       })
       .send({ login: true, email: req.userEmail });
   } catch (error) {
