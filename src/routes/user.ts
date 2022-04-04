@@ -226,9 +226,16 @@ userRouter.post(
         );
       }
       res
-        .clearCookie("accessToken")
+        .clearCookie("accessToken", {
+          httpOnly: true,
+          secure: process.env.ENV === "production", // only https requests
+          sameSite: "none",
+        })
         .clearCookie("refreshToken", {
           path: "/users/refresh",
+          httpOnly: true,
+          secure: process.env.ENV === "production", // only https requests
+          sameSite: "none",
         })
         .send({ logout: true });
       res.send();
